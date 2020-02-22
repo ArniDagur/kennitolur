@@ -26,8 +26,8 @@
     unsafe_code,
     unused_qualifications
 )]
-mod error;
 mod dates;
+mod error;
 
 #[cfg(feature = "chrono")]
 use chrono::naive::NaiveDate;
@@ -76,14 +76,14 @@ impl Kennitala {
         let year_offset = if century_digit == 0 { 2000 } else { 1900 };
 
         let dob_month = kt_array[2] * 10 + kt_array[3];
-        if dob_month > 12 {
+        if (dob_month > 12) || (dob_month <= 0) {
             return Err(KennitalaError::InvalidMonth);
         }
 
         let dob_year = (kt_array[4] * 10) as u16 + kt_array[5] as u16 + year_offset;
 
         let dob_day = kt_array[0] * 10 + kt_array[1];
-        if dob_day > days_in_month(dob_month, dob_year) {
+        if (dob_day > days_in_month(dob_month, dob_year)) || (dob_day <= 0) {
             return Err(KennitalaError::InvalidDay);
         }
 
@@ -132,6 +132,7 @@ fn calculate_checksum_digit(kt_array: &[u8; 10]) -> u8 {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]

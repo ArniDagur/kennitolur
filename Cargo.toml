@@ -1,0 +1,14 @@
+[package]
+name = "kennitolur"
+description = "Parse and validate Icelandic government issued ID numbers (kennitölur)"
+version = "0.1.0"
+authors = ["Árni Dagur <arni@dagur.eu>"]
+edition = "2018"
+license = "MIT OR Apache-2.0"
+keywords = ["kennitala", "icelandic"]
+
+[features]
+default = ["chrono"]
+
+[dependencies]
+chrono = { version = "0.4", optional = true }

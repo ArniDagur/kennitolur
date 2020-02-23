@@ -119,13 +119,14 @@ fn kt_to_array(kt_integer: u32, array: &mut [u8; 10]) {
 }
 
 fn calculate_checksum_digit(kt_array: &[u8; 10]) -> u8 {
-    let mut sum = 0;
+    let mut sum: u32 = 0;
     for i in 0..8 {
-        sum += kt_array[i] * VALIDATION_DIGITS[i];
+        println!("{}", sum);
+        sum += (kt_array[i] * VALIDATION_DIGITS[i]) as u32;
     }
 
     let sum_mod_11 = sum % 11;
-    let digit = if sum_mod_11 == 0 { 0 } else { 11 - sum_mod_11 };
+    let digit = if sum_mod_11 == 0 { 0 } else { 11 - sum_mod_11 } as u8;
 
     return digit;
 }
@@ -157,5 +158,17 @@ mod tests {
             rest: 5939,
         };
         assert_eq!(my_kennitala, expected);
+    }
+
+    #[test]
+    fn max_u32() {
+        let kt = Kennitala::new(&std::u32::MAX.to_string());
+        assert!(kt.is_err());
+    }
+
+    #[test]
+    fn failed_fuzz_1() {
+        let kt = Kennitala::new("3999999999");
+        assert!(kt.is_err());
     }
 }

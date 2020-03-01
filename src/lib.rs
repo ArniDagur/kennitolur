@@ -121,7 +121,6 @@ fn kt_to_array(kt_integer: u32, array: &mut [u8; 10]) {
 fn calculate_checksum_digit(kt_array: &[u8; 10]) -> u8 {
     let mut sum: u32 = 0;
     for i in 0..8 {
-        println!("{}", sum);
         sum += (kt_array[i] * VALIDATION_DIGITS[i]) as u32;
     }
 

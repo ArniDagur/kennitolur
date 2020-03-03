@@ -1,7 +1,7 @@
 [package]
 name = "kennitolur"
 description = "Parse and validate Icelandic government issued ID numbers (kennitölur)"
-version = "0.1.3"
+version = "0.1.4"
 authors = ["Árni Dagur <arni@dagur.eu>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"

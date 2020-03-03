@@ -1,4 +1,4 @@
-const DAYS_IN_MONTH: [u8; 12] = [
+const DAYS_IN_MONTH: [u32; 12] = [
     31, // January
     28, // Febuary
     31, // March
@@ -14,12 +14,12 @@ const DAYS_IN_MONTH: [u8; 12] = [
 ];
 
 #[inline]
-fn is_leap_year(year: u16) -> bool {
+fn is_leap_year(year: u32) -> bool {
     (year % 4 == 0) && (year % 100 != 0 || year % 400 == 0)
 }
 
 #[inline]
-pub fn days_in_month(month: u8, year: u16) -> u8 {
+pub fn days_in_month(month: u32, year: u32) -> u32 {
     if (month == 2) && is_leap_year(year) {
         29
     } else {

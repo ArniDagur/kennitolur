@@ -59,15 +59,31 @@ impl Kennitala {
     /// Create new kennitala object from the given string. Validation is done
     /// beforehand.
     pub fn new(kennitala: &str) -> Result<Self, KennitalaError> {
-        let kt_integer = match kennitala.parse::<u32>() {
+        let only_numbers = kennitala.chars().all(char::is_numeric);
+        if !only_numbers {
+            return Err(KennitalaError::InvalidNumber);
+        }
+
+        if kennitala.len() != 10 {
+            // A valid kennitala string consists of 10 ASCII bytes.
+            return Err(KennitalaError::InvalidLength(kennitala.len()));
+        }
+
+        let kennitala_u32 = match kennitala.parse::<u32>() {
             Ok(n) => n,
-            Err(error) => {
-                return Err(KennitalaError::InvalidNumber(error));
+            Err(_) => {
+                return Err(KennitalaError::InvalidNumber);
             }
         };
 
+        Kennitala::from_u32(kennitala_u32)
+    }
+
+    /// Create new kennitala object from the given u32. Validation is done
+    /// beforehand.
+    pub fn from_u32(kennitala: u32) -> Result<Self, KennitalaError> {
         let mut kt_array = [0; 10];
-        kt_to_array(kt_integer, &mut kt_array);
+        kt_to_array(kennitala, &mut kt_array)?;
 
         let checksum_digit = kt_array[8];
         let calculated_checksum_digit = calculate_checksum_digit(&kt_array);
@@ -182,7 +198,7 @@ impl fmt::Display for Kennitala {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{:02}{:02}{:02}{:02}{}",
+            "{:02}{:02}{:02}{:03}{}",
             self.get_day(),
             self.get_month(),
             self.get_short_year(),
@@ -192,7 +208,7 @@ impl fmt::Display for Kennitala {
     }
 }
 
-fn kt_to_array(kt_integer: u32, array: &mut [u32; 10]) {
+fn kt_to_array(kt_integer: u32, array: &mut [u32; 10]) -> Result<(), KennitalaError> {
     let mut n = kt_integer;
     let mut i = 0;
     while n > 0 {
@@ -201,6 +217,11 @@ fn kt_to_array(kt_integer: u32, array: &mut [u32; 10]) {
         array[9 - i] = digit;
         n /= 10;
         i += 1
+    }
+    if i < 9 {
+        Err(KennitalaError::InvalidLength(i))
+    } else {
+        Ok(())
     }
 }
 
@@ -259,6 +280,23 @@ mod tests {
     }
 
     #[test]
+    fn made_up_kennitala() {
+        let kt = Kennitala::new("0311203149").unwrap();
+        assert_eq!(kt.get_day(), 3);
+        assert_eq!(kt.get_month(), 11);
+        assert_eq!(kt.get_short_year(), 20);
+        assert_eq!(kt.get_short_century(), 9);
+        assert_eq!(kt.get_randoms(), 314);
+        assert_eq!(kt.get_year(), 1920);
+        #[cfg(feature = "chrono")]
+        {
+            let my_moms_birthday = NaiveDate::from_ymd(1920, 11, 3);
+            assert_eq!(kt.get_birthday(), my_moms_birthday);
+        }
+        assert_eq!(kt.to_string(), "0311203149");
+    }
+
+    #[test]
     fn max_u32() {
         let kt = Kennitala::new(&std::u32::MAX.to_string());
         assert!(kt.is_err());
@@ -273,6 +311,12 @@ mod tests {
     #[test]
     fn failed_fuzz_2() {
         let kt = Kennitala::new("9999");
+        assert!(kt.is_err());
+    }
+
+    #[test]
+    fn failed_fuzz_3() {
+        let kt = Kennitala::new("01011413300");
         assert!(kt.is_err());
     }
 }

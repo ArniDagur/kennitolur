@@ -1,12 +1,13 @@
 use std::error::Error;
 use std::fmt;
-use std::num::ParseIntError;
 
 /// Errors which can come up when validating a given kennitala.
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum KennitalaError {
+    /// The kennitala given does not have 10 digits.
+    InvalidLength(usize),
     /// The string given cannot be coverted into a valid `u32` number.
-    InvalidNumber(ParseIntError),
+    InvalidNumber,
     /// The 1st and 2nd digits representing the day of birth are invalid for
     /// the given month and year.
     InvalidDay,
@@ -26,7 +27,8 @@ pub enum KennitalaError {
 impl fmt::Display for KennitalaError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            KennitalaError::InvalidNumber(_) => write!(f, "Invalid number"),
+            KennitalaError::InvalidLength(n) => write!(f, "Length {} is invalid", n),
+            KennitalaError::InvalidNumber => write!(f, "Invalid number"),
             KennitalaError::InvalidDay => write!(f, "Day of birth is invalid"),
             KennitalaError::InvalidMonth => write!(f, "Month of birth is invalid"),
             KennitalaError::InvalidRandomDigits => write!(f, "The random digits are invalid"),
@@ -38,9 +40,6 @@ impl fmt::Display for KennitalaError {
 
 impl Error for KennitalaError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            KennitalaError::InvalidNumber(error) => Some(error),
-            _ => None,
-        }
+        None
     }
 }

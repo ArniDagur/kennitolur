@@ -31,12 +31,13 @@ mod error;
 
 #[cfg(feature = "chrono")]
 use chrono::naive::NaiveDate;
+use std::convert::TryFrom;
 use std::fmt;
 
 use dates::days_in_month;
 pub use error::KennitalaError;
 
-const VALIDATION_DIGITS: [u32; 8] = [3, 2, 7, 6, 5, 4, 3, 2];
+const VALIDATION_DIGITS: [u8; 8] = [3, 2, 7, 6, 5, 4, 3, 2];
 
 const DAY_MASK: u32 = 0b00000000_00000000_00000000_00011111;
 const DAY_OFFSET: u32 = 0;
@@ -59,7 +60,9 @@ impl Kennitala {
     /// Create new kennitala object from the given string. Validation is done
     /// beforehand.
     pub fn new(kennitala: &str) -> Result<Self, KennitalaError> {
-        let only_numbers = kennitala.chars().all(char::is_numeric);
+        let only_numbers = kennitala
+            .chars()
+            .all(|c| ((c as u32) >= 48) && ((c as u32) <= 57));
         if !only_numbers {
             return Err(KennitalaError::InvalidNumber);
         }
@@ -69,51 +72,55 @@ impl Kennitala {
             return Err(KennitalaError::InvalidLength(kennitala.len()));
         }
 
-        let kennitala_u32 = match kennitala.parse::<u32>() {
-            Ok(n) => n,
-            Err(_) => {
-                return Err(KennitalaError::InvalidNumber);
-            }
-        };
-
-        Kennitala::from_u32(kennitala_u32)
+        let mut kennitala_array = <[u8; 10]>::try_from(kennitala.as_bytes()).unwrap();
+        for d in &mut kennitala_array {
+            // The ASCII codes for the arabic numerals share a contiguous range
+            // from 48 to 57.
+            *d -= 48;
+        }
+        Kennitala::from_slice(&kennitala_array)
     }
 
-    /// Create new kennitala object from the given u32. Validation is done
+    // Create new kennitala object from the given u32. Validation is done
     /// beforehand.
-    pub fn from_u32(kennitala: u32) -> Result<Self, KennitalaError> {
-        let mut kt_array = [0; 10];
-        kt_to_array(kennitala, &mut kt_array)?;
+    pub fn from_u32(kennitala_u32: u32) -> Result<Self, KennitalaError> {
+        let mut kennitala = [0; 10];
+        kt_to_array(kennitala_u32, &mut kennitala)?;
+        Kennitala::from_slice(&kennitala)
+    }
 
-        let checksum_digit = kt_array[8];
-        let calculated_checksum_digit = calculate_checksum_digit(&kt_array);
+    /// Create new kennitala object from the given slice. Validation is done
+    /// beforehand.
+    pub fn from_slice(kennitala: &[u8; 10]) -> Result<Self, KennitalaError> {
+        let checksum_digit = kennitala[8];
+        let calculated_checksum_digit = calculate_checksum_digit(&kennitala);
         if checksum_digit != calculated_checksum_digit {
             return Err(KennitalaError::InvalidChecksum);
         }
 
-        if ((kt_array[6] * 10) + kt_array[7]) < 20 {
+        if ((kennitala[6] * 10) + kennitala[7]) < 20 {
             return Err(KennitalaError::InvalidRandomDigits);
         }
 
-        let century_digit = kt_array[9];
+        let century_digit = kennitala[9] as u32;
         if !((century_digit == 0) || (century_digit == 9)) {
             return Err(KennitalaError::InvalidCentury);
         }
         let year_offset = if century_digit == 0 { 2000 } else { 1900 };
 
-        let dob_month = kt_array[2] * 10 + kt_array[3];
+        let dob_month = (kennitala[2] * 10) as u32 + kennitala[3] as u32;
         if (dob_month > 12) || (dob_month <= 0) {
             return Err(KennitalaError::InvalidMonth);
         }
 
-        let dob_year = (kt_array[4] * 10) + kt_array[5];
+        let dob_year = (kennitala[4] * 10) as u32 + kennitala[5] as u32;
 
-        let dob_day = kt_array[0] * 10 + kt_array[1];
+        let dob_day = (kennitala[0] * 10) as u32 + kennitala[1] as u32;
         if (dob_day > days_in_month(dob_month, dob_year + year_offset)) || (dob_day <= 0) {
             return Err(KennitalaError::InvalidDay);
         }
 
-        let rest = (kt_array[6] * 100) + (kt_array[7] * 10) + kt_array[8];
+        let rest = (kennitala[6] as u32) * 100 + (kennitala[7] * 10) as u32 + kennitala[8] as u32;
 
         let mut value = dob_day << DAY_OFFSET;
         value += dob_month << MONTH_OFFSET;
@@ -208,13 +215,13 @@ impl fmt::Display for Kennitala {
     }
 }
 
-fn kt_to_array(kt_integer: u32, array: &mut [u32; 10]) -> Result<(), KennitalaError> {
+fn kt_to_array(kt_integer: u32, array: &mut [u8; 10]) -> Result<(), KennitalaError> {
     let mut n = kt_integer;
     let mut i = 0;
     while n > 0 {
         let digit = n % 10;
         debug_assert!(digit <= 9);
-        array[9 - i] = digit;
+        array[9 - i] = digit as u8;
         n /= 10;
         i += 1
     }
@@ -228,15 +235,15 @@ fn kt_to_array(kt_integer: u32, array: &mut [u32; 10]) -> Result<(), KennitalaEr
 // This function can return the number 10, which is not a valid digit in the
 // range [0, 9]. That's okay, since the number 10 will not match the checksum
 // digit in the given kennitala, so an error will be raised.
-fn calculate_checksum_digit(kt_array: &[u32; 10]) -> u32 {
-    let mut sum = 0;
+fn calculate_checksum_digit(kennitala: &[u8; 10]) -> u8 {
+    let mut sum: u32 = 0;
     for i in 0..8 {
-        sum += kt_array[i] * VALIDATION_DIGITS[i];
+        sum += (kennitala[i] * VALIDATION_DIGITS[i]) as u32;
     }
     let sum_mod_11 = sum % 11;
     let digit = if sum_mod_11 == 0 { 0 } else { 11 - sum_mod_11 };
     debug_assert!(digit <= 10);
-    digit
+    digit as u8
 }
 
 #[cfg(test)]

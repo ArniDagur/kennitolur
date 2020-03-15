@@ -1,4 +1,4 @@
-const DAYS_IN_MONTH: [u32; 12] = [
+const DAYS_IN_MONTH: [u8; 12] = [
     31, // January
     28, // Febuary
     31, // March
@@ -23,6 +23,6 @@ pub fn days_in_month(month: u32, year: u32) -> u32 {
     if (month == 2) && is_leap_year(year) {
         29
     } else {
-        DAYS_IN_MONTH[(month - 1) as usize]
+        DAYS_IN_MONTH[(month - 1) as usize] as u32
     }
 }

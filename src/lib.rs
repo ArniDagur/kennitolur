@@ -90,8 +90,10 @@ impl Kennitala {
     }
 
     /// Create new kennitala object from the given slice. Validation is done
-    /// beforehand.
-    pub fn from_slice(kennitala: &[u8; 10]) -> Result<Self, KennitalaError> {
+    /// beforehand. Each element in the slice must be equal or less than 9.
+    fn from_slice(kennitala: &[u8; 10]) -> Result<Self, KennitalaError> {
+        debug_assert!(kennitala.iter().all(|d| *d <= 9));
+
         let checksum_digit = kennitala[8];
         let calculated_checksum_digit = calculate_checksum_digit(&kennitala);
         if checksum_digit != calculated_checksum_digit {
